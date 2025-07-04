@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan Integral Interactivo de Propósitos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: Se ha diseñado una aplicación tipo dashboard con una barra de navegación lateral fija para un acceso rápido a las 6 áreas de propósito y a un resumen general. La vista principal al cargar es el "Resumen", que presenta visualizaciones clave (gráfico de presupuesto y horario semanal) para una comprensión inmediata. Al hacer clic en un propósito, el área de contenido principal se actualiza dinámicamente para mostrar los detalles de esa sección (valores, métodos, herramientas). Esta estructura fue elegida porque facilita una navegación no lineal, permitiendo al usuario pasar de una vista general a detalles específicos de forma intuitiva, mejorando la usabilidad y la asimilación del contenido complejo del plan. -->
+    <!-- Visualization & Content Choices: 1. Presupuesto Mensual -> Goal: Comparar -> Viz: Gráfico de Donut (Chart.js) -> Interaction: Hover para ver detalles -> Justification: Ideal para mostrar proporciones de un total de forma clara y visualmente atractiva. 2. Horario Semanal -> Goal: Organizar -> Viz: Tabla/Grid estilizada (HTML/Tailwind) -> Interaction: Visualización estática clara -> Justification: Transforma la tabla de texto en un calendario visual fácil de interpretar. 3. Secciones de Propósitos -> Goal: Informar/Organizar -> Viz: Tarjetas con iconos (HTML/Tailwind) -> Interaction: Navegación entre secciones -> Justification: Divide la información densa en bloques temáticos y digeribles, mejorando la legibilidad. Se usan iconos Unicode para una rápida identificación visual. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .nav-link { transition: all 0.2s ease-in-out; }
+        .nav-link.active { background-color: #e5e7eb; color: #11182c; }
+        .nav-link:hover { background-color: #f3f4f6; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: auto;
+            min-height: 300px;
+            margin: auto;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                min-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-gray-800">
+
+    <div class="flex min-h-screen">
+        <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 p-6 hidden md:flex flex-col flex-shrink-0">
+            <h1 class="text-2xl font-bold text-gray-900 mb-8">Mi Plan Integral</h1>
+            <nav id="main-nav" class="flex flex-col space-y-2">
+                <a href="#resumen" class="nav-link active font-semibold rounded-lg px-4 py-2 text-gray-600">📊 Resumen</a>
+                <a href="#vida-saludable" class="nav-link font-semibold rounded-lg px-4 py-2 text-gray-600">💪 Vida Saludable</a>
+                <a href="#viajar" class="nav-link font-semibold rounded-lg px-4 py-2 text-gray-600">✈️ Viajar</a>
+                <a href="#salsa" class="nav-link font-semibold rounded-lg px-4 py-2 text-gray-600">💃 Salsa</a>
+                <a href="#exhio" class="nav-link font-semibold rounded-lg px-4 py-2 text-gray-600">🚀 Crecimiento Exhio</a>
+                <a href="#zoro" class="nav-link font-semibold rounded-lg px-4 py-2 text-gray-600">🐾 Bienestar de Zoro</a>
+                <a href="#ingles" class="nav-link font-semibold rounded-lg px-4 py-2 text-gray-600">📚 Aprendizaje Inglés</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 p-4 md:p-10 overflow-y-auto">
+            
+            <div class="md:hidden mb-6">
+                <select id="mobile-nav" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                     <option value="#resumen">📊 Resumen</option>
+                     <option value="#vida-saludable">💪 Vida Saludable</option>
+                     <option value="#viajar">✈️ Viajar</option>
+                     <option value="#salsa">💃 Salsa</option>
+                     <option value="#exhio">🚀 Crecimiento Exhio</option>
+                     <option value="#zoro">🐾 Bienestar de Zoro</option>
+                     <option value="#ingles">📚 Aprendizaje Inglés</option>
+                </select>
+            </div>
+
+            <div id="resumen" class="content-section active">
+                <h2 class="text-4xl font-bold mb-2 text-gray-900">Resumen del Plan</h2>
+                <p class="text-gray-600 mb-8">Una vista general de los componentes clave de tu plan de vida: presupuesto y organización semanal.</p>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-2xl font-semibold mb-1">Presupuesto Mensual</h3>
+                        <p class="text-gray-500 mb-4">Distribución de los $5,600 USD para alcanzar tus metas.</p>
+                        <div class="chart-container">
+                            <canvas id="budgetChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="text-2xl font-semibold mb-1">Esquema Semanal</h3>
+                        <p class="text-gray-500 mb-6">Una rutina equilibrada para integrar todos tus propósitos.</p>
+                        <div id="weekly-schedule" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="vida-saludable" class="content-section"></div>
+            <div id="viajar" class="content-section"></div>
+            <div id="salsa" class="content-section"></div>
+            <div id="exhio" class="content-section"></div>
+            <div id="zoro" class="content-section"></div>
+            <div id="ingles" class="content-section"></div>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const appData = {
+        'vida-saludable': {
+            title: 'Vida Saludable',
+            emoji: '💪',
+            intro: 'Para maximizar tu salud, combina ejercicio regular con buena alimentación y descanso. Este plan se enfoca en la disciplina y el equilibrio cuerpo-mente para aumentar tu energía y bienestar general.',
+            values: ['Disciplina', 'Bienestar', 'Autocuidado', 'Equilibrio cuerpo-mente', 'Energía'],
+            sections: [
+                {
+                    title: 'Métodos Concretos',
+                    icon: '🎯',
+                    content: [
+                        'Entrena 3–5 veces/semana (circuito funcional, HIIT o calistenia).',
+                        'Usa apps de ejercicio guiado como Nike Training Club o Freeletics.',
+                        'Alterna entre gimnasio (pesas) y entrenamientos al aire libre.',
+                        'Integra estiramientos o yoga para mejorar flexibilidad.'
+                    ]
+                },
+                {
+                    title: 'Hábitos y Herramientas',
+                    icon: '🛠️',
+                    content: [
+                        'Registra tu actividad con un smartwatch (Fitbit, Apple Watch) o app (Garmin Connect).',
+                        'Usa apps de hábitos (Habitica, Streaks) para motivarte con retos diarios.',
+                        'Planifica entrenamientos en Google Calendar o Notion.',
+                        'Realiza chequeos médicos periódicos y mantén una buena hidratación.'
+                    ]
+                },
+                 {
+                    title: 'Rutina Semanal Ejemplo',
+                    icon: '🗓️',
+                    content: [
+                        'Lunes/Miércoles/Viernes: Rutina funcional/HIIT.',
+                        'Martes/Jueves: Calistenia en casa.',
+                        'Sábado: Actividad moderada (bici o ruta).',
+                        'Domingo: Descanso activo (caminata larga, yoga).',
+                        'Noche: Meditación (Calm/Headspace).'
+                    ]
+                }
+            ]
+        },
+        'viajar': {
+            title: 'Viajar por el Mundo',
+            emoji: '✈️',
+            intro: 'Viajar enriquece la vida y expande horizontes. Este plan se basa en la curiosidad y la aventura, utilizando estrategias inteligentes para explorar el mundo sin salirse del presupuesto.',
+            values: ['Curiosidad', 'Apertura cultural', 'Aventura', 'Respeto', 'Aprendizaje continuo'],
+            sections: [
+                {
+                    title: 'Ahorro Inteligente',
+                    icon: '💰',
+                    content: [
+                        'Viaja en temporada baja para reducir costos hasta un 50%.',
+                        'Usa alertas de precios en Google Flights, Skyscanner o Hopper.',
+                        'Considera hostales, Airbnb o intercambio de casas.',
+                        'Cocina tus propias comidas y come donde comen los locales.',
+                        'Utiliza siempre el transporte público local.'
+                    ]
+                },
+                {
+                    title: 'Herramientas Digitales',
+                    icon: '📱',
+                    content: [
+                        'Centraliza itinerarios con TripIt, Wanderlog o Google Trips.',
+                        'Controla gastos de viaje con Trail Wallet o Mint.',
+                        'Aprende frases locales con Duolingo.',
+                        'Destina $1,000 USD/mes a un fondo de viaje.'
+                    ]
+                }
+            ]
+        },
+        'salsa': {
+            title: 'Comunidad Salsera',
+            emoji: '💃',
+            intro: 'Para sobresalir como salsero, este plan se enfoca en la pasión y la perseverancia, combinando práctica constante con una creciente visibilidad en la comunidad de baile.',
+            values: ['Pasión', 'Expresividad', 'Creatividad', 'Comunidad', 'Perseverancia'],
+            sections: [
+                {
+                    title: 'Métodos Concretos',
+                    icon: '🕺',
+                    content: [
+                        'Practica 15–30 min diarias en casa (tutoriales de YouTube, app Pocket Salsa).',
+                        'Asiste a eventos sociales, congresos y fiestas cada fin de semana.',
+                        'Inscríbete en talleres intensivos o bootcamps.',
+                        'Publica videos de tus bailes en Instagram o TikTok.'
+                    ]
+                },
+                {
+                    title: 'Hábitos y Herramientas',
+                    icon: '🎶',
+                    content: [
+                        'Marca un horario fijo para clases de salsa.',
+                        'Usa una app de ritmo (Metronome Beats) para mejorar tu musicalidad.',
+                        'Únete a grupos de baile online (Facebook, Meetup).',
+                        'Lleva un registro de pasos aprendidos y feedback.'
+                    ]
+                }
+            ]
+        },
+        'exhio': {
+            title: 'Crecimiento de Exhio',
+            emoji: '🚀',
+            intro: 'Para escalar la consultoría "Exhio", la estrategia se centra en la innovación y la excelencia, fortaleciendo la presencia online y el desarrollo profesional continuo para liderar en el mercado.',
+            values: ['Innovación', 'Liderazgo', 'Excelencia', 'Servicio al cliente', 'Aprendizaje continuo'],
+            sections: [
+                {
+                    title: 'Marketing y Networking',
+                    icon: '🌐',
+                    content: [
+                        'Fortalece tu presencia online (web, LinkedIn/Instagram, SEO).',
+                        'Asiste a ferias y eventos de la industria.',
+                        'Ofrece consultas o webinars gratuitos para generar confianza.',
+                        'Usa un CRM (HubSpot, Zoho) y email marketing (Mailchimp).'
+                    ]
+                },
+                {
+                    title: 'Desarrollo Profesional',
+                    icon: '🎓',
+                    content: [
+                        'Invierte en cursos especializados (Coursera, Udemy, edX).',
+                        'Consume contenido de valor: podcasts y libros (Lean Startup).',
+                        'Dedica bloques diarios a leer sobre tendencias (TechCrunch, Wired).',
+                        'Usa herramientas de gestión de proyectos como Trello o Asana.'
+                    ]
+                }
+            ]
+        },
+        'zoro': {
+            title: 'Bienestar de Zoro',
+            emoji: '🐾',
+            intro: 'Zoro es parte de la familia. Este plan garantiza su bienestar a través de la responsabilidad, el cariño y la empatía, cubriendo todas sus necesidades de salud, ejercicio y atención.',
+            values: ['Responsabilidad', 'Cariño', 'Lealtad', 'Empatía'],
+            sections: [
+                {
+                    title: 'Ejercicio y Atención',
+                    icon: '❤️',
+                    content: [
+                        'Pasea a Zoro 30–60 minutos diariamente.',
+                        'Estimúlalo mentalmente con juguetes interactivos.',
+                        'Considera guarderías o paseadores si es necesario (app Rover).',
+                        'Llévalo a parques caninos para que socialice.'
+                    ]
+                },
+                {
+                    title: 'Hábitos y Herramientas',
+                    icon: '🦴',
+                    content: [
+                        'Establece una rutina diaria para alimentación y paseos.',
+                        'Usa Google Calendar para recordatorios de citas veterinarias.',
+                        'Utiliza apps como Pawtrack para registrar su salud y actividad.',
+                        'Proporciónale atención y cariño constante.'
+                    ]
+                }
+            ]
+        },
+        'ingles': {
+            title: 'Aprendizaje de Inglés',
+            emoji: '📚',
+            intro: 'Dominar el inglés abre puertas. El plan se basa en la superación y la perseverancia, combinando aprendizaje formal con herramientas digitales y práctica diaria inmersiva.',
+            values: ['Comunicación', 'Apertura cultural', 'Superación personal', 'Perseverancia'],
+            sections: [
+                {
+                    title: 'Apps y Clases',
+                    icon: '💬',
+                    content: [
+                        'Usa Duolingo, Memrise o Babbel para vocabulario y gramática.',
+                        'Practica conversación con Cambly o Busuu.',
+                        'Contrata tutores nativos para clases personalizadas en Preply.',
+                        'Usa tu presupuesto de $600/mes para clases y cursos.'
+                    ]
+                },
+                {
+                    title: 'Inmersión y Práctica',
+                    icon: '🌍',
+                    content: [
+                        'Establece una rutina de estudio diaria de 30-60 minutos.',
+                        'Ve series y películas en versión original.',
+                        'Participa en intercambios de idiomas (HelloTalk, Meetup).',
+                        'Usa tarjetas de memoria (Anki, Quizlet) para repasar vocabulario.'
+                    ]
+                }
+            ]
+        },
+        weeklySchedule: {
+            "6:00–8:00 am": { week: 'Entrenamiento funcional/calistenia', weekend: 'Caminata larga o ciclismo con Zoro + yoga' },
+            "8:00–9:00 am": { week: 'Desayuno saludable + paseo corto con Zoro', weekend: 'Desayuno + planificación de viaje' },
+            "9:00–1:00 pm": { week: 'Trabajo en Exhio (proyectos clientes)', weekend: 'Aprendizaje cultural: lectura, documentales' },
+            "1:00–2:00 pm": { week: 'Almuerzo nutritivo + breve descanso', weekend: 'Almuerzo + socializar (eventos)' },
+            "2:00–6:00 pm": { week: 'Trabajo Exhio (desarrollo personal)', weekend: 'Taller de salsa, picnic cultural' },
+            "6:00–7:00 pm": { week: 'Clase de salsa / Baile libre', weekend: 'Asistir a fiesta/ensayo de baile' },
+            "7:00–8:00 pm": { week: 'Cena ligera y juego con Zoro', weekend: 'Cena familiar o salida cultural' },
+            "8:00–9:00 pm": { week: 'Estudio de inglés (app o tutor)', weekend: 'Revisión de presupuestos y objetivos' },
+            "9:00–10:00 pm": { week: 'Tiempo de relajación (meditación, libro)', weekend: 'Preparación para semana' },
+        }
+    };
+
+    function createSectionHTML(data) {
+        let valuesHTML = data.values.map(v => `<span class="inline-block bg-sky-100 text-sky-800 text-sm font-semibold mr-2 px-2.5 py-0.5 rounded-full">${v}</span>`).join('');
+
+        let sectionsHTML = data.sections.map(sec => `
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h4 class="text-xl font-semibold mb-3 flex items-center"><span class="mr-3 text-2xl">${sec.icon}</span>${sec.title}</h4>
+                <ul class="list-disc list-inside space-y-2 text-gray-600">
+                    ${sec.content.map(item => `<li>${item}</li>`).join('')}
+                </ul>
+            </div>
+        `).join('');
+
+        return `
+            <h2 class="text-4xl font-bold mb-2 text-gray-900">${data.emoji} ${data.title}</h2>
+            <p class="text-gray-600 mb-6 max-w-3xl">${data.intro}</p>
+            <div class="mb-8">${valuesHTML}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                ${sectionsHTML}
+            </div>
+        `;
+    }
+
+    Object.keys(appData).forEach(key => {
+        if (key !== 'weeklySchedule') {
+            const container = document.getElementById(key);
+            if (container) {
+                container.innerHTML = createSectionHTML(appData[key]);
+            }
+        }
+    });
+
+    const weeklyScheduleContainer = document.getElementById('weekly-schedule');
+    Object.entries(appData.weeklySchedule).forEach(([time, activities]) => {
+        const scheduleHTML = `
+            <div class="border-l-4 border-teal-500 pl-4 py-2 bg-gray-50 rounded-r-lg">
+                <p class="font-bold text-teal-800">${time}</p>
+                <p class="text-sm text-gray-600"><strong class="font-semibold">L-V:</strong> ${activities.week}</p>
+                <p class="text-sm text-gray-600"><strong class="font-semibold">S-D:</strong> ${activities.weekend}</p>
+            </div>
+        `;
+        weeklyScheduleContainer.innerHTML += scheduleHTML;
+    });
+
+    const budgetData = {
+        labels: ['Salud', 'Mascota (Zoro)', 'Viajes', 'Clases'],
+        datasets: [{
+            label: 'Presupuesto Mensual',
+            data: [2000, 2000, 1000, 600],
+            backgroundColor: ['#14b8a6', '#6366f1', '#f97316', '#3b82f6'],
+            borderColor: '#ffffff',
+            borderWidth: 4,
+            hoverOffset: 12
+        }]
+    };
+
+    const budgetChartCtx = document.getElementById('budgetChart').getContext('2d');
+    new Chart(budgetChartCtx, {
+        type: 'doughnut',
+        data: budgetData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        font: { size: 14, family: 'Inter' }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed !== null) {
+                                label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                            }
+                            return label;
+                        }
+                    },
+                    padding: 12,
+                    titleFont: { size: 16, family: 'Inter' },
+                    bodyFont: { size: 14, family: 'Inter' }
+                }
+            }
+        }
+    });
+
+    const navLinks = document.querySelectorAll('.nav-link');
+    const mobileNav = document.getElementById('mobile-nav');
+    const contentSections = document.querySelectorAll('.content-section');
+
+    function updateContent(hash) {
+        contentSections.forEach(section => {
+            section.classList.remove('active');
+        });
+
+        const activeSection = document.querySelector(hash);
+        if (activeSection) {
+            activeSection.classList.add('active');
+        }
+
+        navLinks.forEach(link => {
+            if (link.getAttribute('href') === hash) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+        
+        mobileNav.value = hash;
+    }
+    
+    function handleNavigation(event) {
+        event.preventDefault();
+        const hash = this.getAttribute('href') || this.value;
+        window.location.hash = hash;
+    }
+
+    navLinks.forEach(link => link.addEventListener('click', handleNavigation));
+    mobileNav.addEventListener('change', handleNavigation);
+
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash || '#resumen';
+        updateContent(hash);
+    });
+
+    const initialHash = window.location.hash || '#resumen';
+    updateContent(initialHash);
+});
+</script>
+</body>
+</html>
